@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 
 export default function Dashboard() {
+  // symbolic update: redeploy trigger (Nolan)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<any>(null)
