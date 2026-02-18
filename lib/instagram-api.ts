@@ -1,25 +1,35 @@
 
 import { supabase } from './supabase'
 
-const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID!
-
 async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
 
   if (!token) {
-      console.error("⛔ [instagram-api] Falha: Usuário não está logado (sem token de sessão).")
-      throw new Error("Usuário não autenticado. Por favor, faça login novamente.")
+    console.error("⛔ [instagram-api] Falha: Usuário não está logado (sem token de sessão).")
+    throw new Error("Usuário não autenticado. Por favor, faça login novamente.")
   }
 
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${endpoint}`
   console.log(`[Pure Fetch] Calling ${url}`)
-  
-  const headers: Record<string, string> = {
+
+  const tenantFromSession =
+    (session?.user?.app_metadata as any)?.tenant_id ||
+    (session?.user?.user_metadata as any)?.tenant_id ||
+    process.env.NEXT_PUBLIC_TENANT_ID || ''
+
+  const baseHeaders: Record<string, string> = {
     'Authorization': `Bearer ${token}`,
     'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    'x-tenant-id': TENANT_ID,
     'Content-Type': 'application/json',
+  }
+
+  if (tenantFromSession) {
+    baseHeaders['x-tenant-id'] = tenantFromSession
+  }
+
+  const headers: Record<string, string> = {
+    ...baseHeaders,
     ...(options.headers as Record<string, string> || {}),
   }
 
