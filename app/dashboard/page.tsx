@@ -16,7 +16,11 @@ export default function Dashboard() {
   const [statusLoading, setStatusLoading] = useState(false)
   
   // Link Generator State
-  const [genTenantId, setGenTenantId] = useState('')
+  const [genTenantId, setGenTenantId] = useState(() => {
+    const envTenant = process.env.NEXT_PUBLIC_TENANT_ID || ''
+    // avoid keeping mock UUID as default in UI
+    return envTenant === '11111111-1111-1111-1111-111111111111' ? '' : envTenant
+  })
   const [genExpiresIn, setGenExpiresIn] = useState(168)
   const [genLink, setGenLink] = useState('')
   const [genLoading, setGenLoading] = useState(false)
@@ -62,7 +66,8 @@ export default function Dashboard() {
       const userTenantId = session.user.app_metadata?.tenant_id || 
                            session.user.user_metadata?.tenant_id || 
                            process.env.NEXT_PUBLIC_TENANT_ID || '';
-      setGenTenantId(userTenantId)
+      const sanitizedTenantId = userTenantId === '11111111-1111-1111-1111-111111111111' ? '' : userTenantId
+      setGenTenantId(sanitizedTenantId)
 
       setLoading(false)
       fetchStatus()
