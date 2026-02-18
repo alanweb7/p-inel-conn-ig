@@ -1,5 +1,6 @@
 
 import React from 'react'
+// symbolic tweak: redeploy checkpoint
 
 export const Card: React.FC<{ children: React.ReactNode, className?: string, title?: string }> = ({ children, className, title }) => (
   <div className={`bg-white shadow rounded-lg px-4 py-5 sm:p-6 ${className}`}>
