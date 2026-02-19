@@ -27,6 +27,14 @@ export default function Dashboard() {
   
   const router = useRouter()
 
+  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+
+  const userEmail = (user?.email || '').toLowerCase()
+  const isAdmin = userEmail === 'alanweb7@gmail.com' || adminEmails.includes(userEmail)
+
   const fetchStatus = async () => {
     setStatusLoading(true)
     try {
@@ -203,21 +211,23 @@ export default function Dashboard() {
                   </Button>
                </div>
             </div>
-            {/* DEBUG BUTTON */}
-            <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Debug Tools</h3>
-              <Button
-                variant="outline"
-                onClick={() => window.open(
-                  "https://gaacobzmhinrxyaikgga.supabase.co/functions/v1/instagram-auth-start-debug?tenant_id=11111111-1111-1111-1111-111111111111",
-                  "_blank"
-                )}
-              >
-                Testar Auth Debug (Direct Link)
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="mt-8 border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Debug Tools</h3>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(
+                    `https://gaacobzmhinrxyaikgga.supabase.co/functions/v1/instagram-auth-start-debug?tenant_id=${encodeURIComponent(genTenantId || '')}`,
+                    "_blank"
+                  )}
+                >
+                  Testar Auth Debug (Direct Link)
+                </Button>
+              </div>
+            )}
         </Card>
 
+        {isAdmin && (
         <Card title="Gerador de Link de Conexão (Admin)">
            <div className="space-y-4">
               <p className="text-sm text-gray-500">
@@ -269,6 +279,7 @@ export default function Dashboard() {
               )}
            </div>
         </Card>
+        )}
       </div>
     </div>
   )
