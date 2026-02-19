@@ -63,33 +63,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'missing_supabase_env' }, { status: 500 })
     }
 
-    const authHeader = req.headers.get('authorization') || ''
-    if (!authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ ok: false, error: 'missing_authorization' }, { status: 401 })
-    }
-    const jwt = authHeader.replace('Bearer ', '').trim()
+    const testSecret = process.env.PUBLISH_TEST_SECRET || ''
+    const providedTestSecret = req.headers.get('x-publish-test-secret') || ''
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    })
-
-    const { data: userData, error: userErr } = await userClient.auth.getUser()
-    if (userErr || !userData?.user) {
-      return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
+    if (providedTestSecret && !testSecret) {
+      return NextResponse.json({ ok: false, error: 'publish_test_secret_not_configured' }, { status: 500 })
     }
 
-    const user = userData.user
-    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
+    if (providedTestSecret && testSecret && providedTestSecret !== testSecret) {
+      return NextResponse.json({ ok: false, error: 'invalid_publish_test_secret' }, { status: 401 })
+    }
 
-    const isAdmin =
-      (user.email || '').toLowerCase() === 'alanweb7@gmail.com' ||
-      adminEmails.includes((user.email || '').toLowerCase())
+    const secretBypass = !!testSecret && providedTestSecret === testSecret
 
-    if (!isAdmin) {
-      return NextResponse.json({ ok: false, error: 'forbidden_admin_only' }, { status: 403 })
+    let actorUserId = 'publish-test-secret'
+    let actorEmail = 'secret-bypass@local'
+
+    if (!secretBypass) {
+      const authHeader = req.headers.get('authorization') || ''
+      if (!authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ ok: false, error: 'missing_authorization' }, { status: 401 })
+      }
+      const jwt = authHeader.replace('Bearer ', '').trim()
+
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: `Bearer ${jwt}` } },
+      })
+
+      const { data: userData, error: userErr } = await userClient.auth.getUser()
+      if (userErr || !userData?.user) {
+        return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
+      }
+
+      const user = userData.user
+      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+
+      const isAdmin =
+        (user.email || '').toLowerCase() === 'alanweb7@gmail.com' ||
+        adminEmails.includes((user.email || '').toLowerCase())
+
+      if (!isAdmin) {
+        return NextResponse.json({ ok: false, error: 'forbidden_admin_only' }, { status: 403 })
+      }
+
+      actorUserId = user.id
+      actorEmail = user.email || 'unknown@local'
     }
 
     const body = (await req.json().catch(() => ({}))) as Body
@@ -142,8 +163,12 @@ export async function POST(req: NextRequest) {
     }
 
     const scopes = Array.isArray(cred.scopes) ? cred.scopes.map(String) : []
-    if (!scopes.includes('instagram_content_publish')) {
-      return NextResponse.json({ ok: false, error: 'missing_scope_instagram_content_publish', scopes }, { status: 400 })
+    const hasPublishScope =
+      scopes.includes('instagram_content_publish') ||
+      scopes.includes('instagram_business_content_publish')
+
+    if (!hasPublishScope) {
+      return NextResponse.json({ ok: false, error: 'missing_scope_publish', scopes }, { status: 400 })
     }
 
     const accessToken = await decryptToken(cred.token_ciphertext, cred.token_iv, keySeed)
@@ -172,8 +197,8 @@ export async function POST(req: NextRequest) {
       provider: 'instagram',
       event_type: 'publish_test_success',
       payload: {
-        actor_user_id: user.id,
-        actor_email: user.email,
+        actor_user_id: actorUserId,
+        actor_email: actorEmail,
         ig_user_id: igUserId,
         page_id: account.page_id,
         media_creation_id: creationId,
@@ -196,6 +221,7 @@ export async function POST(req: NextRequest) {
       image_url: imageUrl,
       caption,
       token_expires_at: cred.token_expires_at || null,
+      auth_mode: secretBypass ? 'secret_bypass' : 'user_jwt',
     })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 })
