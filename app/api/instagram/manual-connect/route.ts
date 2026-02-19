@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
         social_account_id: account.id,
         token_ciphertext: encrypted.ciphertext,
         token_iv: encrypted.iv,
-        scopes: ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'],
+        scopes: ['pages_show_list', 'pages_read_engagement', 'business_management', 'instagram_basic', 'instagram_content_publish', 'instagram_business_basic', 'instagram_business_content_publish'],
         token_expires_at: body.expiresAt || null,
         refreshed_at: new Date().toISOString(),
       }, { onConflict: 'tenant_id,social_account_id' })
