@@ -117,18 +117,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    await admin.from('integration_audit_event').insert({
-      tenant_id: tenant.id,
-      provider: 'organix',
-      event_type: 'tenant_registered_with_reader',
-      payload: {
-        actor_user_id: user.id,
-        actor_email: user.email,
-        tenant_external_ref: tenant.external_ref,
-        reader_user_id: createdUser.user.id,
-        reader_email: readerEmail,
-      },
-    }).then(() => null).catch(() => null)
+    try {
+      await admin.from('integration_audit_event').insert({
+        tenant_id: tenant.id,
+        provider: 'organix',
+        event_type: 'tenant_registered_with_reader',
+        payload: {
+          actor_user_id: user.id,
+          actor_email: user.email,
+          tenant_external_ref: tenant.external_ref,
+          reader_user_id: createdUser.user.id,
+          reader_email: readerEmail,
+        },
+      })
+    } catch {
+      // audit não bloqueia fluxo principal
+    }
 
     return NextResponse.json({
       ok: true,
