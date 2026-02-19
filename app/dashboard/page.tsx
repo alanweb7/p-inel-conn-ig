@@ -268,6 +268,7 @@ export default function Dashboard() {
         </Card>
 
         {isAdmin && (
+        <>
         <Card title="Gerador de Link de Conexão (Admin)">
            <div className="space-y-4">
               <p className="text-sm text-gray-500">
@@ -395,6 +396,7 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+        </>
         )}
       </div>
     </div>
