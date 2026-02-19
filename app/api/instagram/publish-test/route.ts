@@ -156,17 +156,36 @@ export async function POST(req: NextRequest) {
 
     const admin = createClient(supabaseUrl, serviceRole)
 
-    const { data: account, error: accountErr } = await admin
+    const { data: activeAccount, error: activeErr } = await admin
       .from('tenant_social_account')
       .select('id, external_account_id, external_account_name, page_id, status')
       .eq('tenant_id', tenantId)
       .eq('provider', 'instagram')
+      .eq('status', 'active')
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    if (accountErr || !account) {
-      return NextResponse.json({ ok: false, error: accountErr?.message || 'instagram_account_not_found' }, { status: 404 })
+    if (activeErr) {
+      return NextResponse.json({ ok: false, error: activeErr.message || 'instagram_account_lookup_failed' }, { status: 400 })
+    }
+
+    let account = activeAccount
+    if (!account) {
+      const { data: latestAccount, error: latestErr } = await admin
+        .from('tenant_social_account')
+        .select('id, external_account_id, external_account_name, page_id, status')
+        .eq('tenant_id', tenantId)
+        .eq('provider', 'instagram')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (latestErr || !latestAccount) {
+        return NextResponse.json({ ok: false, error: latestErr?.message || 'instagram_account_not_found' }, { status: 404 })
+      }
+
+      account = latestAccount
     }
 
     if (account.status !== 'active') {
