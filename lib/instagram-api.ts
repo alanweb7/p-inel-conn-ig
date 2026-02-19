@@ -16,7 +16,7 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
   const tenantFromSession =
     (session?.user?.app_metadata as any)?.tenant_id ||
     (session?.user?.user_metadata as any)?.tenant_id ||
-    process.env.NEXT_PUBLIC_TENANT_ID || ''
+    ''
 
   const baseHeaders: Record<string, string> = {
     'Authorization': `Bearer ${token}`,
