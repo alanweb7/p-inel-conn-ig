@@ -75,6 +75,14 @@ type PublishTestPayload = {
   caption?: string
 }
 
+type RegisterTenantPayload = {
+  externalRef: string
+  displayName: string
+  legalName?: string
+  readerEmail: string
+  readerPassword?: string
+}
+
 async function callInternalApi(path: string, payload: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
@@ -114,4 +122,5 @@ export const instagramApi = {
   }),
   manualConnect: (payload: ManualConnectPayload) => callInternalApi('/api/instagram/manual-connect', payload),
   publishTest: (payload: PublishTestPayload) => callInternalApi('/api/instagram/publish-test', payload),
+  registerTenantWithReader: (payload: RegisterTenantPayload) => callInternalApi('/api/admin/register-tenant', payload),
 }

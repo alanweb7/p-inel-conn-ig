@@ -38,6 +38,14 @@ export default function Dashboard() {
   const [postCaption, setPostCaption] = useState('Post de validação Organix ✅')
   const [postImageUrl, setPostImageUrl] = useState('https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg')
   const [postLoading, setPostLoading] = useState(false)
+
+  // Registro de tenant + usuário leitor (admin)
+  const [tenantExternalRef, setTenantExternalRef] = useState('')
+  const [tenantDisplayName, setTenantDisplayName] = useState('')
+  const [tenantLegalName, setTenantLegalName] = useState('')
+  const [readerEmail, setReaderEmail] = useState('')
+  const [readerPassword, setReaderPassword] = useState('')
+  const [tenantRegisterLoading, setTenantRegisterLoading] = useState(false)
   
   const router = useRouter()
 
@@ -195,6 +203,48 @@ export default function Dashboard() {
     }
   }
 
+  const handleRegisterTenant = async () => {
+    if (!tenantExternalRef.trim() || !tenantDisplayName.trim() || !readerEmail.trim()) {
+      return alert('Preencha Código Externo, Nome de Exibição e E-mail do Leitor.')
+    }
+
+    setTenantRegisterLoading(true)
+    try {
+      const res = await instagramApi.registerTenantWithReader({
+        externalRef: tenantExternalRef.trim(),
+        displayName: tenantDisplayName.trim(),
+        legalName: tenantLegalName.trim() || undefined,
+        readerEmail: readerEmail.trim(),
+        readerPassword: readerPassword.trim() || undefined,
+      })
+
+      if (res?.ok) {
+        const generatedPassword = res?.reader?.password
+          ? `\nSenha temporária gerada: ${res.reader.password}`
+          : ''
+
+        alert(`Tenant registrado com sucesso!\nTenant ID: ${res?.tenant?.id}\nLeitor: ${res?.reader?.email}${generatedPassword}`)
+
+        if (res?.tenant?.id) {
+          setGenTenantId(res.tenant.id)
+          setManualTenantId(res.tenant.id)
+        }
+
+        setTenantExternalRef('')
+        setTenantDisplayName('')
+        setTenantLegalName('')
+        setReaderEmail('')
+        setReaderPassword('')
+      } else {
+        alert('Erro ao registrar tenant: ' + (res?.error || 'falha_desconhecida'))
+      }
+    } catch (e) {
+      alert('Erro ao registrar tenant: ' + (e as Error).message)
+    } finally {
+      setTenantRegisterLoading(false)
+    }
+  }
+
   const copyLink = () => {
     if(!genLink) return
     navigator.clipboard.writeText(genLink)
@@ -318,6 +368,87 @@ export default function Dashboard() {
 
         {isAdmin && (
         <>
+        <Card title="Registro de Tenant + Usuário Leitor (Admin)">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Cria/atualiza um tenant e registra um usuário com permissão <strong>apenas de leitura</strong> (role: reader).
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Código Externo</label>
+                <input
+                  type="text"
+                  value={tenantExternalRef}
+                  onChange={(e) => setTenantExternalRef(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                  placeholder="ex.: 127659"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nome de Exibição</label>
+                <input
+                  type="text"
+                  value={tenantDisplayName}
+                  onChange={(e) => setTenantDisplayName(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                  placeholder="ex.: Organix Cliente X"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Razão Social (opcional)</label>
+                <input
+                  type="text"
+                  value={tenantLegalName}
+                  onChange={(e) => setTenantLegalName(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                  placeholder="Nome jurídico da empresa"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">E-mail do Leitor</label>
+                <input
+                  type="email"
+                  value={readerEmail}
+                  onChange={(e) => setReaderEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                  placeholder="leitor@cliente.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Senha do Leitor (opcional)</label>
+                <input
+                  type="text"
+                  value={readerPassword}
+                  onChange={(e) => setReaderPassword(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                  placeholder="deixe em branco para gerar automaticamente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Permissão</label>
+                <input
+                  type="text"
+                  value="reader (somente leitura)"
+                  readOnly
+                  className="mt-1 block w-full rounded-md border-gray-200 bg-gray-50 text-gray-600 sm:text-sm p-2 border"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleRegisterTenant} isLoading={tenantRegisterLoading} disabled={tenantRegisterLoading}>
+                Registrar Tenant + Leitor
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         <Card title="Gerador de Link de Conexão (Admin)">
            <div className="space-y-4">
               <p className="text-sm text-gray-500">
