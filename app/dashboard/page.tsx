@@ -249,7 +249,7 @@ export default function Dashboard() {
                         Desconectar
                      </Button>
                   )}
-                  <Button variant="secondary" onClick={fetchStatus} isLoading={statusLoading} disabled={statusLoading}>
+                  <Button variant="secondary" onClick={() => fetchStatus()} isLoading={statusLoading} disabled={statusLoading}>
                     Atualizar Status
                   </Button>
                </div>
