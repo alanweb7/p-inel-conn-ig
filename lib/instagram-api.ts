@@ -59,6 +59,40 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
   }
 }
 
+type ManualConnectPayload = {
+  tenantId: string
+  accessToken: string
+  pageId: string
+  pageName?: string
+  igBusinessAccountId: string
+  igUsername?: string
+  expiresAt?: string
+}
+
+async function callInternalApi(path: string, payload: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) throw new Error('Usuário não autenticado. Faça login novamente.')
+
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const text = await response.text()
+  if (!response.ok) throw new Error(`Error ${response.status}: ${text}`)
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { ok: true, message: text }
+  }
+}
+
 export const instagramApi = {
   startAuth: () => fetchEdgeFunction('instagram-auth-start'),
   getStatus: () => fetchEdgeFunction('instagram-status'),
@@ -68,4 +102,5 @@ export const instagramApi = {
     headers: { 'x-tenant-id': tenantId },
     body: JSON.stringify({ tenantId, expiresInHours })
   }),
+  manualConnect: (payload: ManualConnectPayload) => callInternalApi('/api/instagram/manual-connect', payload),
 }
