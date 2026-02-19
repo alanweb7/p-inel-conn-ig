@@ -33,6 +33,11 @@ export default function Dashboard() {
   const [manualIgId, setManualIgId] = useState('')
   const [manualIgUsername, setManualIgUsername] = useState('')
   const [manualLoading, setManualLoading] = useState(false)
+
+  // Exemplo de publicação
+  const [postCaption, setPostCaption] = useState('Post de validação Organix ✅')
+  const [postImageUrl, setPostImageUrl] = useState('https://upload.wikimedia.org/wikipedia/commons/a/a9/Example.jpg')
+  const [postLoading, setPostLoading] = useState(false)
   
   const router = useRouter()
 
@@ -167,6 +172,29 @@ export default function Dashboard() {
     }
   }
 
+  const handleSamplePost = async () => {
+    if (!postImageUrl.trim()) return alert('Informe a URL da imagem.')
+
+    setPostLoading(true)
+    try {
+      const res = await instagramApi.publishTest({
+        tenantId: effectiveTenantId || undefined,
+        imageUrl: postImageUrl.trim(),
+        caption: postCaption.trim() || 'Post de validação Organix ✅',
+      })
+
+      if (res?.ok && res?.published) {
+        alert(`Post publicado com sucesso! ID: ${res?.publish_result?.id || 'N/A'}`)
+      } else {
+        alert('Falha ao publicar post de exemplo.')
+      }
+    } catch (e) {
+      alert('Erro ao publicar: ' + (e as Error).message)
+    } finally {
+      setPostLoading(false)
+    }
+  }
+
   const copyLink = () => {
     if(!genLink) return
     navigator.clipboard.writeText(genLink)
@@ -255,17 +283,35 @@ export default function Dashboard() {
                </div>
             </div>
             {isAdmin && (
-              <div className="mt-8 border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Debug Tools</h3>
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(
-                    `https://gaacobzmhinrxyaikgga.supabase.co/functions/v1/instagram-auth-start-debug?tenant_id=${encodeURIComponent(genTenantId || '')}`,
-                    "_blank"
-                  )}
-                >
-                  Testar Auth Debug (Direct Link)
-                </Button>
+              <div className="mt-8 border-t pt-6 space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Post de Exemplo (Admin)</h3>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Texto do post</label>
+                  <textarea
+                    value={postCaption}
+                    onChange={(e) => setPostCaption(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border min-h-[90px]"
+                    placeholder="Escreva a legenda do post"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">URL da imagem</label>
+                  <input
+                    type="text"
+                    value={postImageUrl}
+                    onChange={(e) => setPostImageUrl(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSamplePost} isLoading={postLoading} disabled={postLoading}>
+                    Publicar Exemplo
+                  </Button>
+                </div>
               </div>
             )}
         </Card>

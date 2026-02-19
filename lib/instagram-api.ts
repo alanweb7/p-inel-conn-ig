@@ -69,6 +69,12 @@ type ManualConnectPayload = {
   expiresAt?: string
 }
 
+type PublishTestPayload = {
+  tenantId?: string
+  imageUrl?: string
+  caption?: string
+}
+
 async function callInternalApi(path: string, payload: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
@@ -107,4 +113,5 @@ export const instagramApi = {
     body: JSON.stringify({ tenantId, expiresInHours })
   }),
   manualConnect: (payload: ManualConnectPayload) => callInternalApi('/api/instagram/manual-connect', payload),
+  publishTest: (payload: PublishTestPayload) => callInternalApi('/api/instagram/publish-test', payload),
 }
