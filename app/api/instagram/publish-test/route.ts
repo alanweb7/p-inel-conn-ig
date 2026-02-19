@@ -53,6 +53,28 @@ async function graphPost(url: string, payload: Record<string, string>) {
   return data
 }
 
+async function graphGetJson(url: string) {
+  const res = await fetch(url)
+  const text = await res.text()
+  let data: any = null
+  try {
+    data = JSON.parse(text)
+  } catch {
+    data = { raw: text }
+  }
+
+  if (!res.ok || data?.error) {
+    const message = data?.error?.message || `graph_error_${res.status}`
+    throw new Error(message)
+  }
+
+  return data
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -187,6 +209,21 @@ export async function POST(req: NextRequest) {
       throw new Error('media_creation_id_missing')
     }
 
+    // Aguarda processamento da mídia antes de publicar
+    let statusCode = 'IN_PROGRESS'
+    let status = null as any
+    for (let i = 0; i < 8; i++) {
+      status = await graphGetJson(
+        `https://graph.facebook.com/${version}/${creationId}?fields=status_code,status&access_token=${encodeURIComponent(accessToken)}`,
+      )
+      statusCode = String(status?.status_code || 'IN_PROGRESS')
+      if (statusCode === 'FINISHED') break
+      if (statusCode === 'ERROR' || statusCode === 'EXPIRED') {
+        throw new Error(`media_container_${statusCode.toLowerCase()}`)
+      }
+      await sleep(1500)
+    }
+
     const publishMedia = await graphPost(`https://graph.facebook.com/${version}/${igUserId}/media_publish`, {
       creation_id: String(creationId),
       access_token: accessToken,
@@ -222,6 +259,7 @@ export async function POST(req: NextRequest) {
       caption,
       token_expires_at: cred.token_expires_at || null,
       auth_mode: secretBypass ? 'secret_bypass' : 'user_jwt',
+      media_status: status,
     })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 })
