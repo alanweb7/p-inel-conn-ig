@@ -44,10 +44,13 @@ export default function Dashboard() {
   const userEmail = (user?.email || '').toLowerCase()
   const isAdmin = userEmail === 'alanweb7@gmail.com' || adminEmails.includes(userEmail)
 
-  const fetchStatus = async () => {
+  const effectiveTenantId = (genTenantId || manualTenantId || '').trim()
+
+  const fetchStatus = async (tenantIdOverride?: string) => {
     setStatusLoading(true)
     try {
-      const data = await instagramApi.getStatus()
+      const tid = (tenantIdOverride || effectiveTenantId || '').trim() || undefined
+      const data = await instagramApi.getStatus(tid)
       setStatus(data)
     } catch (e) {
       console.error(e)
@@ -88,13 +91,13 @@ export default function Dashboard() {
       setManualTenantId(sanitizedTenantId)
 
       setLoading(false)
-      fetchStatus()
+      fetchStatus(sanitizedTenantId)
     })
   }, [router])
 
   const handleConnect = async () => {
     try {
-      const { url } = await instagramApi.startAuth()
+      const { url } = await instagramApi.startAuth(effectiveTenantId || undefined)
       window.location.href = url
     } catch (e) {
       alert('Erro ao iniciar conexão: ' + (e as Error).message)
@@ -104,7 +107,7 @@ export default function Dashboard() {
   const handleDisconnect = async () => {
     if(!confirm('Tem certeza que deseja desconectar?')) return
     try {
-      await instagramApi.disconnect()
+      await instagramApi.disconnect(effectiveTenantId || undefined)
       await fetchStatus()
     } catch (e) {
       alert('Erro ao desconectar: ' + (e as Error).message)

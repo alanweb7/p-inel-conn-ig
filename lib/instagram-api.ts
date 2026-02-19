@@ -94,9 +94,13 @@ async function callInternalApi(path: string, payload: Record<string, unknown>) {
 }
 
 export const instagramApi = {
-  startAuth: () => fetchEdgeFunction('instagram-auth-start'),
-  getStatus: () => fetchEdgeFunction('instagram-status'),
-  disconnect: () => callInternalApi('/api/instagram/disconnect', {}),
+  startAuth: (tenantId?: string) => fetchEdgeFunction('instagram-auth-start', {
+    headers: tenantId ? { 'x-tenant-id': tenantId } : {},
+  }),
+  getStatus: (tenantId?: string) => fetchEdgeFunction('instagram-status', {
+    headers: tenantId ? { 'x-tenant-id': tenantId } : {},
+  }),
+  disconnect: (tenantId?: string) => callInternalApi('/api/instagram/disconnect', tenantId ? { tenantId } : {}),
   generateLink: (tenantId: string, expiresInHours: number) => fetchEdgeFunction('instagram-auth-start', {
     method: 'POST',
     headers: { 'x-tenant-id': tenantId },
