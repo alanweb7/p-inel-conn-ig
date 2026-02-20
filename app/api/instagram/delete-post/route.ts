@@ -58,40 +58,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'missing_supabase_env' }, { status: 500 })
     }
 
-    const authHeader = req.headers.get('authorization') || ''
-    if (!authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ ok: false, error: 'missing_authorization' }, { status: 401 })
+    const testSecret = process.env.PUBLISH_TEST_SECRET || ''
+    const providedTestSecret = req.headers.get('x-publish-test-secret') || ''
+
+    if (providedTestSecret && !testSecret) {
+      return NextResponse.json({ ok: false, error: 'publish_test_secret_not_configured' }, { status: 500 })
     }
 
-    const jwt = authHeader.replace('Bearer ', '').trim()
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    })
-
-    const { data: userData, error: userErr } = await userClient.auth.getUser()
-    if (userErr || !userData?.user) {
-      return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
+    if (providedTestSecret && testSecret && providedTestSecret !== testSecret) {
+      return NextResponse.json({ ok: false, error: 'invalid_publish_test_secret' }, { status: 401 })
     }
 
-    const user = userData.user
-    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
+    const secretBypass = !!testSecret && providedTestSecret === testSecret
 
-    const isAdmin =
-      (user.email || '').toLowerCase() === 'alanweb7@gmail.com' ||
-      adminEmails.includes((user.email || '').toLowerCase())
+    let actorUserId = 'delete-post-secret'
+    let actorEmail = 'secret-bypass@local'
+    let user: any = null
 
-    if (!isAdmin) {
-      return NextResponse.json({ ok: false, error: 'forbidden_admin_only' }, { status: 403 })
+    if (!secretBypass) {
+      const authHeader = req.headers.get('authorization') || ''
+      if (!authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ ok: false, error: 'missing_authorization' }, { status: 401 })
+      }
+
+      const jwt = authHeader.replace('Bearer ', '').trim()
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: `Bearer ${jwt}` } },
+      })
+
+      const { data: userData, error: userErr } = await userClient.auth.getUser()
+      if (userErr || !userData?.user) {
+        return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
+      }
+
+      user = userData.user
+      const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+
+      const isAdmin =
+        (user.email || '').toLowerCase() === 'alanweb7@gmail.com' ||
+        adminEmails.includes((user.email || '').toLowerCase())
+
+      if (!isAdmin) {
+        return NextResponse.json({ ok: false, error: 'forbidden_admin_only' }, { status: 403 })
+      }
+
+      actorUserId = user.id
+      actorEmail = user.email || 'unknown@local'
     }
 
     const body = (await req.json().catch(() => ({}))) as Body
     const tenantId =
       body?.tenantId ||
-      (user.app_metadata as any)?.tenant_id ||
-      (user.user_metadata as any)?.tenant_id ||
+      (user?.app_metadata as any)?.tenant_id ||
+      (user?.user_metadata as any)?.tenant_id ||
       process.env.NEXT_PUBLIC_TENANT_ID || ''
 
     const mediaId = String(body?.mediaId || '').trim()
@@ -148,8 +170,8 @@ export async function POST(req: NextRequest) {
       provider: 'instagram',
       event_type: 'delete_post_success',
       payload: {
-        actor_user_id: user.id,
-        actor_email: user.email || null,
+        actor_user_id: actorUserId,
+        actor_email: actorEmail,
         media_id: mediaId,
         ig_user_id: account.external_account_id,
         page_id: account.page_id,
