@@ -60,14 +60,12 @@ export default function Dashboard() {
   const isAdmin = userEmail === 'alanweb7@gmail.com' || adminEmails.includes(userEmail)
 
   const effectiveTenantId = (genTenantId || manualTenantId || '').trim()
-  const effectiveUnitId = (genUnitId || manualUnitId || '').trim()
 
   const fetchStatus = async (tenantIdOverride?: string) => {
     setStatusLoading(true)
     try {
       const tid = (tenantIdOverride || effectiveTenantId || '').trim() || undefined
-      const uid = (effectiveUnitId || '').trim() || undefined
-      const data = await instagramApi.getStatus(tid, uid)
+      const data = await instagramApi.getStatus(tid)
       setStatus(data)
     } catch (e) {
       console.error(e)
@@ -120,7 +118,7 @@ export default function Dashboard() {
 
   const handleConnect = async () => {
     try {
-      const { url } = await instagramApi.startAuth(effectiveTenantId || undefined, effectiveUnitId || undefined)
+      const { url } = await instagramApi.startAuth(effectiveTenantId || undefined)
       window.location.href = url
     } catch (e) {
       alert('Erro ao iniciar conexão: ' + (e as Error).message)
@@ -130,7 +128,7 @@ export default function Dashboard() {
   const handleDisconnect = async () => {
     if(!confirm('Tem certeza que deseja desconectar?')) return
     try {
-      await instagramApi.disconnect(effectiveTenantId || undefined, effectiveUnitId || undefined)
+      await instagramApi.disconnect(effectiveTenantId || undefined)
       await fetchStatus()
     } catch (e) {
       alert('Erro ao desconectar: ' + (e as Error).message)
@@ -144,11 +142,10 @@ export default function Dashboard() {
 
   const handleGenerateLink = async () => {
     if (!genTenantId) return alert('Informe o Tenant ID')
-    if (!genUnitId) return alert('Informe o Unit ID')
     setGenLoading(true)
     setGenLink('')
     try {
-      const res = await instagramApi.generateLink(genTenantId, genUnitId, genExpiresIn)
+      const res = await instagramApi.generateLink(genTenantId, genExpiresIn)
       if (res.url) {
         setGenLink(res.url)
       } else {
