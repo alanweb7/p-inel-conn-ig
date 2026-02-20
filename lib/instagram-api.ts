@@ -101,6 +101,11 @@ type PublishTestPayload = {
   caption?: string
 }
 
+type DeletePostPayload = {
+  tenantId?: string
+  mediaId: string
+}
+
 type RegisterTenantPayload = {
   externalRef: string
   displayName: string
@@ -154,5 +159,6 @@ export const instagramApi = {
   }),
   manualConnect: (payload: ManualConnectPayload) => callInternalApi('/api/instagram/manual-connect', payload),
   publishTest: (payload: PublishTestPayload) => callInternalApi('/api/instagram/publish-test', payload),
+  deletePost: (payload: DeletePostPayload) => callInternalApi('/api/instagram/delete-post', payload),
   registerTenantWithReader: (payload: RegisterTenantPayload) => callInternalApi('/api/admin/register-tenant', payload),
 }
