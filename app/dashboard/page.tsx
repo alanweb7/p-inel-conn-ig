@@ -21,12 +21,14 @@ export default function Dashboard() {
     // avoid keeping mock UUID as default in UI
     return envTenant === '11111111-1111-1111-1111-111111111111' ? '' : envTenant
   })
+  const [genUnitId, setGenUnitId] = useState(() => process.env.NEXT_PUBLIC_UNIT_ID || '')
   const [genExpiresIn, setGenExpiresIn] = useState(168)
   const [genLink, setGenLink] = useState('')
   const [genLoading, setGenLoading] = useState(false)
 
   // Manual connect (admin-only demo)
   const [manualTenantId, setManualTenantId] = useState('')
+  const [manualUnitId, setManualUnitId] = useState('')
   const [manualAccessToken, setManualAccessToken] = useState('')
   const [manualPageId, setManualPageId] = useState('')
   const [manualPageName, setManualPageName] = useState('')
@@ -58,12 +60,14 @@ export default function Dashboard() {
   const isAdmin = userEmail === 'alanweb7@gmail.com' || adminEmails.includes(userEmail)
 
   const effectiveTenantId = (genTenantId || manualTenantId || '').trim()
+  const effectiveUnitId = (genUnitId || manualUnitId || '').trim()
 
   const fetchStatus = async (tenantIdOverride?: string) => {
     setStatusLoading(true)
     try {
       const tid = (tenantIdOverride || effectiveTenantId || '').trim() || undefined
-      const data = await instagramApi.getStatus(tid)
+      const uid = (effectiveUnitId || '').trim() || undefined
+      const data = await instagramApi.getStatus(tid, uid)
       setStatus(data)
     } catch (e) {
       console.error(e)
@@ -99,9 +103,15 @@ export default function Dashboard() {
       const userTenantId = session.user.app_metadata?.tenant_id || 
                            session.user.user_metadata?.tenant_id || 
                            process.env.NEXT_PUBLIC_TENANT_ID || '';
+      const userUnitId = session.user.app_metadata?.unit_id ||
+                         session.user.user_metadata?.unit_id ||
+                         process.env.NEXT_PUBLIC_UNIT_ID || '';
+
       const sanitizedTenantId = userTenantId === '11111111-1111-1111-1111-111111111111' ? '' : userTenantId
       setGenTenantId(sanitizedTenantId)
       setManualTenantId(sanitizedTenantId)
+      setGenUnitId(userUnitId)
+      setManualUnitId(userUnitId)
 
       setLoading(false)
       fetchStatus(sanitizedTenantId)
@@ -110,7 +120,7 @@ export default function Dashboard() {
 
   const handleConnect = async () => {
     try {
-      const { url } = await instagramApi.startAuth(effectiveTenantId || undefined)
+      const { url } = await instagramApi.startAuth(effectiveTenantId || undefined, effectiveUnitId || undefined)
       window.location.href = url
     } catch (e) {
       alert('Erro ao iniciar conexão: ' + (e as Error).message)
@@ -120,7 +130,7 @@ export default function Dashboard() {
   const handleDisconnect = async () => {
     if(!confirm('Tem certeza que deseja desconectar?')) return
     try {
-      await instagramApi.disconnect(effectiveTenantId || undefined)
+      await instagramApi.disconnect(effectiveTenantId || undefined, effectiveUnitId || undefined)
       await fetchStatus()
     } catch (e) {
       alert('Erro ao desconectar: ' + (e as Error).message)
@@ -134,10 +144,11 @@ export default function Dashboard() {
 
   const handleGenerateLink = async () => {
     if (!genTenantId) return alert('Informe o Tenant ID')
+    if (!genUnitId) return alert('Informe o Unit ID')
     setGenLoading(true)
     setGenLink('')
     try {
-      const res = await instagramApi.generateLink(genTenantId, genExpiresIn)
+      const res = await instagramApi.generateLink(genTenantId, genUnitId, genExpiresIn)
       if (res.url) {
         setGenLink(res.url)
       } else {
@@ -159,6 +170,7 @@ export default function Dashboard() {
     try {
       const res = await instagramApi.manualConnect({
         tenantId: manualTenantId,
+        unitId: manualUnitId || undefined,
         accessToken: manualAccessToken,
         pageId: manualPageId,
         pageName: manualPageName,
@@ -455,7 +467,7 @@ export default function Dashboard() {
                 Gere um link seguro para conectar uma conta do Instagram a um Tenant específico.
                 O link expira após o tempo configurado.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Tenant ID (UUID)</label>
                   <input 
@@ -464,6 +476,16 @@ export default function Dashboard() {
                     onChange={e => setGenTenantId(e.target.value)} 
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
                     placeholder="e.g. 12345678-..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Unit ID (UUID)</label>
+                  <input 
+                    type="text" 
+                    value={genUnitId} 
+                    onChange={e => setGenUnitId(e.target.value)} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                    placeholder="e.g. 87654321-..."
                   />
                 </div>
                 <div>
@@ -516,6 +538,16 @@ export default function Dashboard() {
                   onChange={e => setManualTenantId(e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
                   placeholder="tenant uuid"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Unit ID (UUID)</label>
+                <input
+                  type="text"
+                  value={manualUnitId}
+                  onChange={e => setManualUnitId(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                  placeholder="unit uuid"
                 />
               </div>
               <div>

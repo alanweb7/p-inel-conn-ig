@@ -2,7 +2,13 @@
 import { supabase } from './supabase'
 
 async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
-  const { data: { session } } = await supabase.auth.getSession()
+  let { data: { session } } = await supabase.auth.getSession()
+
+  if (!session?.access_token) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    session = refreshed.session
+  }
+
   const token = session?.access_token
 
   if (!token) {
@@ -18,6 +24,11 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
     (session?.user?.user_metadata as any)?.tenant_id ||
     ''
 
+  const unitFromSession =
+    (session?.user?.app_metadata as any)?.unit_id ||
+    (session?.user?.user_metadata as any)?.unit_id ||
+    ''
+
   const baseHeaders: Record<string, string> = {
     'Authorization': `Bearer ${token}`,
     'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,6 +37,10 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
 
   if (tenantFromSession) {
     baseHeaders['x-tenant-id'] = tenantFromSession
+  }
+
+  if (unitFromSession) {
+    baseHeaders['x-unit-id'] = unitFromSession
   }
 
   const headers: Record<string, string> = {
@@ -45,6 +60,9 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
     console.log(`[Pure Fetch] Body: ${text}`)
 
     if (!response.ok) {
+        if (text.includes('Auth session missing')) {
+          throw new Error('Sessão expirada ou inválida. Faça logout e login novamente.')
+        }
         throw new Error(`Error ${response.status}: ${text}`)
     }
 
@@ -61,6 +79,7 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
 
 type ManualConnectPayload = {
   tenantId: string
+  unitId?: string
   accessToken: string
   pageId: string
   pageName?: string
@@ -108,17 +127,29 @@ async function callInternalApi(path: string, payload: Record<string, unknown>) {
 }
 
 export const instagramApi = {
-  startAuth: (tenantId?: string) => fetchEdgeFunction('instagram-auth-start', {
-    headers: tenantId ? { 'x-tenant-id': tenantId } : {},
+  startAuth: (tenantId?: string, unitId?: string) => fetchEdgeFunction('instagram-auth-start', {
+    headers: {
+      ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+      ...(unitId ? { 'x-unit-id': unitId } : {}),
+    },
   }),
-  getStatus: (tenantId?: string) => fetchEdgeFunction('instagram-status', {
-    headers: tenantId ? { 'x-tenant-id': tenantId } : {},
+  getStatus: (tenantId?: string, unitId?: string) => fetchEdgeFunction('instagram-status', {
+    headers: {
+      ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+      ...(unitId ? { 'x-unit-id': unitId } : {}),
+    },
   }),
-  disconnect: (tenantId?: string) => callInternalApi('/api/instagram/disconnect', tenantId ? { tenantId } : {}),
-  generateLink: (tenantId: string, expiresInHours: number) => fetchEdgeFunction('instagram-auth-start', {
+  disconnect: (tenantId?: string, unitId?: string) => callInternalApi('/api/instagram/disconnect', {
+    ...(tenantId ? { tenantId } : {}),
+    ...(unitId ? { unitId } : {}),
+  }),
+  generateLink: (tenantId: string, unitId: string, expiresInHours: number) => fetchEdgeFunction('instagram-auth-start', {
     method: 'POST',
-    headers: { 'x-tenant-id': tenantId },
-    body: JSON.stringify({ tenantId, expiresInHours })
+    headers: {
+      'x-tenant-id': tenantId,
+      'x-unit-id': unitId,
+    },
+    body: JSON.stringify({ tenantId, unitId, expiresInHours })
   }),
   manualConnect: (payload: ManualConnectPayload) => callInternalApi('/api/instagram/manual-connect', payload),
   publishTest: (payload: PublishTestPayload) => callInternalApi('/api/instagram/publish-test', payload),
