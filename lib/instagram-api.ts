@@ -40,6 +40,11 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
     (session?.user?.user_metadata as any)?.tenant_id ||
     ''
 
+  const unitFromSession =
+    (session?.user?.app_metadata as any)?.unit_id ||
+    (session?.user?.user_metadata as any)?.unit_id ||
+    ''
+
   const baseHeaders: Record<string, string> = {
     'Authorization': `Bearer ${token}`,
     'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -48,6 +53,10 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
 
   if (tenantFromSession) {
     baseHeaders['x-tenant-id'] = tenantFromSession
+  }
+
+  if (unitFromSession) {
+    baseHeaders['x-unit-id'] = unitFromSession
   }
 
   const headers: Record<string, string> = {
@@ -132,25 +141,29 @@ async function callInternalApi(path: string, payload: Record<string, unknown>) {
 }
 
 export const instagramApi = {
-  startAuth: (tenantId?: string) => fetchEdgeFunction('instagram-auth-start', {
+  startAuth: (tenantId?: string, unitId?: string) => fetchEdgeFunction('instagram-auth-start', {
     headers: {
       ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+      ...(unitId ? { 'x-unit-id': unitId } : {}),
     },
   }),
-  getStatus: (tenantId?: string) => fetchEdgeFunction('instagram-status', {
+  getStatus: (tenantId?: string, unitId?: string) => fetchEdgeFunction('instagram-status', {
     headers: {
       ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+      ...(unitId ? { 'x-unit-id': unitId } : {}),
     },
   }),
-  disconnect: (tenantId?: string) => callInternalApi('/api/instagram/disconnect', {
+  disconnect: (tenantId?: string, unitId?: string) => callInternalApi('/api/instagram/disconnect', {
     ...(tenantId ? { tenantId } : {}),
+    ...(unitId ? { unitId } : {}),
   }),
-  generateLink: (tenantId: string, expiresInHours: number) => fetchEdgeFunction('instagram-auth-start', {
+  generateLink: (tenantId: string, unitId: string, expiresInHours: number) => fetchEdgeFunction('instagram-auth-start', {
     method: 'POST',
     headers: {
       'x-tenant-id': tenantId,
+      'x-unit-id': unitId,
     },
-    body: JSON.stringify({ tenantId, expiresInHours })
+    body: JSON.stringify({ tenantId, unitId, expiresInHours })
   }),
   manualConnect: (payload: ManualConnectPayload) => callInternalApi('/api/instagram/manual-connect', payload),
   publishTest: (payload: PublishTestPayload) => callInternalApi('/api/instagram/publish-test', payload),

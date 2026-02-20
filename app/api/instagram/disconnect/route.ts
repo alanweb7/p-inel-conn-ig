@@ -27,15 +27,23 @@ export async function POST(req: NextRequest) {
     }
 
     const user = userData.user
-    const body = await req.json().catch(() => ({})) as { tenantId?: string }
+    const body = await req.json().catch(() => ({})) as { tenantId?: string, unitId?: string }
     const tenantId =
       body?.tenantId ||
       (user.app_metadata as any)?.tenant_id ||
       (user.user_metadata as any)?.tenant_id ||
       process.env.NEXT_PUBLIC_TENANT_ID || ''
+    const unitId =
+      body?.unitId ||
+      (user.app_metadata as any)?.unit_id ||
+      (user.user_metadata as any)?.unit_id ||
+      process.env.NEXT_PUBLIC_UNIT_ID || ''
 
     if (!tenantId) {
       return NextResponse.json({ ok: false, error: 'tenant_id_required' }, { status: 400 })
+    }
+    if (!unitId) {
+      return NextResponse.json({ ok: false, error: 'unit_id_required' }, { status: 400 })
     }
 
     const admin = createClient(supabaseUrl, serviceRole)
@@ -44,6 +52,7 @@ export async function POST(req: NextRequest) {
       .from('tenant_social_account')
       .update({ status: 'disconnected', updated_at: new Date().toISOString() })
       .eq('tenant_id', tenantId)
+      .eq('unit_id', unitId)
       .eq('provider', 'instagram')
 
     if (upErr) {
@@ -57,7 +66,7 @@ export async function POST(req: NextRequest) {
       payload: { by_user_id: user.id, by_email: user.email || null },
     })
 
-    return NextResponse.json({ ok: true, disconnected: true, tenantId })
+    return NextResponse.json({ ok: true, disconnected: true, tenantId, unitId })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 })
   }
