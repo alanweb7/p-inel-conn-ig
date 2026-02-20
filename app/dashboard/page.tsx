@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<any>(null)
   const [statusLoading, setStatusLoading] = useState(false)
+  const [connecting, setConnecting] = useState(false)
   
   // Link Generator State
   const [genTenantId, setGenTenantId] = useState(() => {
@@ -117,6 +118,8 @@ export default function Dashboard() {
   }, [router])
 
   const handleConnect = async () => {
+    if (connecting) return
+    setConnecting(true)
     try {
       const { url } = await instagramApi.startAuth(effectiveTenantId || undefined)
       const popup = window.open(url, '_blank', 'noopener,noreferrer')
@@ -125,6 +128,8 @@ export default function Dashboard() {
       }
     } catch (e) {
       alert('Erro ao iniciar conexão: ' + (e as Error).message)
+    } finally {
+      setTimeout(() => setConnecting(false), 1500)
     }
   }
 
@@ -331,7 +336,7 @@ export default function Dashboard() {
 
                <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
                   {!status?.connected ? (
-                     <Button onClick={handleConnect} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-none">
+                     <Button onClick={handleConnect} isLoading={connecting} disabled={connecting} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-none">
                         Conectar Instagram
                      </Button>
                   ) : (
