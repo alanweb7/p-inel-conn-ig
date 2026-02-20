@@ -464,7 +464,7 @@ export default function Dashboard() {
                 Gere um link seguro para conectar uma conta do Instagram a um Tenant específico.
                 O link expira após o tempo configurado.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Tenant ID (UUID)</label>
                   <input 
@@ -473,16 +473,6 @@ export default function Dashboard() {
                     onChange={e => setGenTenantId(e.target.value)} 
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
                     placeholder="e.g. 12345678-..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Unit ID (UUID)</label>
-                  <input 
-                    type="text" 
-                    value={genUnitId} 
-                    onChange={e => setGenUnitId(e.target.value)} 
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                    placeholder="e.g. 87654321-..."
                   />
                 </div>
                 <div>
