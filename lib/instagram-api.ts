@@ -1,7 +1,7 @@
 
 import { supabase } from './supabase'
 
-async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
+async function getValidAccessToken() {
   let { data: { session } } = await supabase.auth.getSession()
 
   if (!session?.access_token) {
@@ -9,12 +9,28 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
     session = refreshed.session
   }
 
-  const token = session?.access_token
+  let token = session?.access_token
+
+  if (token) {
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+    if (userErr || !userData?.user) {
+      const { data: refreshed } = await supabase.auth.refreshSession()
+      token = refreshed.session?.access_token
+    }
+  }
 
   if (!token) {
     console.error("⛔ [instagram-api] Falha: Usuário não está logado (sem token de sessão).")
     throw new Error("Usuário não autenticado. Por favor, faça login novamente.")
   }
+
+  return token
+}
+
+async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
+  const token = await getValidAccessToken()
+
+  const { data: { session } } = await supabase.auth.getSession()
 
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${endpoint}`
   console.log(`[Pure Fetch] Calling ${url}`)
@@ -30,7 +46,9 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
     ''
 
   const baseHeaders: Record<string, string> = {
+    // keep both cases for stricter gateways/proxies
     'Authorization': `Bearer ${token}`,
+    'authorization': `Bearer ${token}`,
     'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     'Content-Type': 'application/json',
   }
@@ -103,9 +121,7 @@ type RegisterTenantPayload = {
 }
 
 async function callInternalApi(path: string, payload: Record<string, unknown>) {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
-  if (!token) throw new Error('Usuário não autenticado. Faça login novamente.')
+  const token = await getValidAccessToken()
 
   const response = await fetch(path, {
     method: 'POST',
