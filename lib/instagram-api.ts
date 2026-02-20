@@ -46,9 +46,7 @@ async function fetchEdgeFunction(endpoint: string, options: RequestInit = {}) {
     ''
 
   const baseHeaders: Record<string, string> = {
-    // keep both cases for stricter gateways/proxies
     'Authorization': `Bearer ${token}`,
-    'authorization': `Bearer ${token}`,
     'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     'Content-Type': 'application/json',
   }
