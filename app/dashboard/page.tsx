@@ -119,7 +119,10 @@ export default function Dashboard() {
   const handleConnect = async () => {
     try {
       const { url } = await instagramApi.startAuth(effectiveTenantId || undefined)
-      window.location.href = url
+      const popup = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!popup) {
+        window.location.href = url
+      }
     } catch (e) {
       alert('Erro ao iniciar conexão: ' + (e as Error).message)
     }
